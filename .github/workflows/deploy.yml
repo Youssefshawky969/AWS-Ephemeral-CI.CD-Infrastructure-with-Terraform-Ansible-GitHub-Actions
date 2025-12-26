@@ -174,7 +174,7 @@ jobs:
   # JOB 5: Validate Application
   # --------------------------------------------------
   validate_app:
-    needs: ansible_configure
+    needs: [terraform_apply, ansible_configure]
     runs-on: ubuntu-latest
 
     steps:
