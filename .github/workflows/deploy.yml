@@ -1,4 +1,4 @@
-name: Ephemeral Infra CI/CD (Terraform Cloud + Ansible)
+name: Ephemeral Infra CI/CD (Terrraform Cloud + Ansible)
 
 on:
   push:
