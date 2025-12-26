@@ -1,4 +1,4 @@
-name: Ephemeral Infra CI/CD (Terraform Clod + Ansible)
+name: Ephemeral Infra CI/CD (Terraform Cloud + Ansible)
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - main
 
 env:
-  TF_CLOUD_ORG: your-hcp-org-name
-  TF_WORKSPACE: ephemeral-ci-env
+  TF_CLOUD_ORG: aws_pipelines
+  TF_WORKSPACE: aws_env
 
 jobs:
   # --------------------------------------------------
