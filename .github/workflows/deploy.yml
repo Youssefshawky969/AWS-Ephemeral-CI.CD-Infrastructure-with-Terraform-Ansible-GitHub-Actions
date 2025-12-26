@@ -1,4 +1,4 @@
-name: Provision infra then destory
+name: Ephemeral Infra CI/CD (Terraform + Ansible)
 
 on:
   push:
@@ -6,61 +6,181 @@ on:
       - main
 
 jobs:
-  deploy:
+  # --------------------------------------------------
+  # JOB 1: Terraform Init
+  # --------------------------------------------------
+  terraform_init:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
-    - name: Install Terraform
-      uses: hashicorp/setup-terraform@v3
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
 
-    - name: Terraform Init
-      run: |
-        cd terraform
-        terraform init
 
-    - name: Terraform Apply
-      run: |
-        cd terraform
-        terraform apply -auto-approve
+  # --------------------------------------------------
+  # JOB 2: Terraform Plan
+  # --------------------------------------------------
+  terraform_plan:
+    needs: terraform_init
+    runs-on: ubuntu-latest
 
-    - name: Extract EC2 Public IP
-      run: |
-        echo "EC2_IP=$(terraform -chdir=terraform output -raw public_ip)" >> $GITHUB_ENV
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Create SSH key file
-      run: |
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
-        chmod 600 key.pem
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Generate Ansible inventory
-      run: |
-        echo "[web]" > ansible/inventory.ini
-        echo "$EC2_IP ansible_user=ubuntu ansible_ssh_private_key_file=key.pem" >> ansible/inventory.ini
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
-    - name: Run Ansible Playbook
-      run: |
-        ansible-playbook -i ansible/inventory.ini ansible/playbook.yml
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
 
-    - name: Print Application URL
-      run: |
-        echo "Application is available at: http://$EC2_IP"
+      - name: Terraform Plan
+        run: |
+          cd terraform
+          terraform plan -out=tfplan
 
-    - name: Wait 5 minutes before destroy
-      run: sleep 300
+      - name: Upload Terraform plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/tfplan
 
-    - name: Terraform Destroy
-      if: always()
-      run: |
-        cd terraform
-        terraform destroy -auto-approve
+
+  # --------------------------------------------------
+  # JOB 3: Terraform Apply
+  # --------------------------------------------------
+  terraform_apply:
+    needs: terraform_plan
+    runs-on: ubuntu-latest
+    outputs:
+      ec2_ip: ${{ steps.tf_output.outputs.ec2_ip }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Download Terraform plan
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform
+
+      - name: Terraform Apply (from plan)
+        run: |
+          cd terraform
+          terraform apply -auto-approve tfplan
+
+      - name: Export EC2 Public IP
+        id: tf_output
+        run: |
+          echo "ec2_ip=$(terraform -chdir=terraform output -raw public_ip)" >> $GITHUB_OUTPUT
+
+
+  # --------------------------------------------------
+  # JOB 4: Ansible Configure
+  # --------------------------------------------------
+  ansible_configure:
+    needs: terraform_apply
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Create SSH key
+        run: |
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > key.pem
+          chmod 600 key.pem
+
+      - name: Generate dynamic inventory
+        run: |
+          echo "[web]" > inventory.ini
+          echo "${{ needs.terraform_apply.outputs.ec2_ip }} ansible_user=ubuntu ansible_ssh_private_key_file=key.pem" >> inventory.ini
+
+      - name: Run Ansible playbook
+        run: |
+          ansible-playbook -i inventory.ini ansible/playbook.yml
+
+
+  # --------------------------------------------------
+  # JOB 5: Validate Application
+  # --------------------------------------------------
+  validate_app:
+    needs: ansible_configure
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate web server
+        run: |
+          curl -f http://${{ needs.terraform_apply.outputs.ec2_ip }}
+
+
+  # --------------------------------------------------
+  # JOB 6: TTL Destroy (Always Runs)
+  # --------------------------------------------------
+  ttl_destroy:
+    needs: [terraform_apply, validate_app]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Wait 2 hours (TTL)
+        run: sleep 7200
+
+      - name: Terraform Destroy
+        run: |
+          cd terraform
+          terraform init
+          terraform destroy -auto-approve
