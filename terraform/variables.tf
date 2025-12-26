@@ -3,8 +3,13 @@ variable "region" {
 }
 
 variable "key_name" {
-  description = "EC2 key pair name"
+  type = string
 }
+
+variable "public_key" {
+  type = string
+}
+
 
 
 variable "instance_type" {
@@ -17,6 +22,7 @@ variable "ami_id" {
   description = "The AMI ID for the NGINX server"
   default     = "ami-068c0051b15cdb816" 
 }  
+
 
 
 
