@@ -3,7 +3,7 @@ terraform {
     organization = "aws_pipelines"
 
     workspaces {
-      name = "aws_env"
+      name = "aws_dev"
     }
   }
 }
