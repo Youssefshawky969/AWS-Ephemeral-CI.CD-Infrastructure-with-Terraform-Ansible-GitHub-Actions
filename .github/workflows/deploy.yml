@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   TF_CLOUD_ORG: aws_pipelines
   TF_WORKSPACE: aws_dev
@@ -123,9 +127,6 @@ jobs:
   # JOB 4: Ansible Configuration
   # --------------------------------------------------
   ansible_configure:
-    permissions:
-      id-token: write   # REQUIRED for OIDC
-      contents: read
     needs: terraform_apply
     runs-on: ubuntu-latest
 
