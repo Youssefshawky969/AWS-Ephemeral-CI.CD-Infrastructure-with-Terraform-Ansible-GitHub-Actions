@@ -80,13 +80,6 @@ jobs:
           cd terraform
           terraform plan
 
-      - name: Upload Terraform plan
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: terraform/tfplan
-
-
   # --------------------------------------------------
   # JOB 3: Terraform Apply
   # --------------------------------------------------
@@ -126,12 +119,6 @@ jobs:
         run: |
           cd terraform
           terraform init
-
-      - name: Download Terraform plan
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: terraform
 
       - name: Terraform Apply (from plan)
         run: |
