@@ -167,7 +167,9 @@ jobs:
 
       - name: Run Ansible playbook
         run: |
-          ansible-playbook -i inventory.ini ansible/playbook.yml
+          ansible-playbook \
+          -i inventory.ini ansible/playbook.yml \
+          --ssh-extra-args="-o StrictHostKeyChecking=no"
 
 
   # --------------------------------------------------
