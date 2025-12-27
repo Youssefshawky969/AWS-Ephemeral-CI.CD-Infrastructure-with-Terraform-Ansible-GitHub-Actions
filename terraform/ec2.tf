@@ -1,11 +1,7 @@
-data "aws_iam_instance_profile" "ssm" {
-  name = "ec2-ssm-role"
-}
-
 resource "aws_instance" "web" {
   ami = var.ami_id
   instance_type = var.instance_type
-  iam_instance_profile    = aws_iam_instance_profile.ssm_profile.name
+  iam_instance_profile    = ec2-ssm-role
 
   tags = {
     Name = "ci_ephemeral_web"
@@ -14,6 +10,7 @@ resource "aws_instance" "web" {
   }
 
 }
+
 
 
 
