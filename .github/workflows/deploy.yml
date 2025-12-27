@@ -110,7 +110,7 @@ jobs:
       - name: Terraform Apply (from plan)
         run: |
           cd terraform
-          terraform apply -auto-approve tfplan
+          terraform apply -auto-approve
 
       - name: Export EC2 Instance ID
         id: tf_output
