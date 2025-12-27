@@ -137,7 +137,7 @@ jobs:
       - name: Generate dynamic inventory
         run: |
           echo "[web]" > inventory.ini
-          echo "${{ needs.terraform_apply.outputs.instance_id }} ansible_user=aws_ssm >> inventory.ini
+          echo "${{ needs.terraform_apply.outputs.instance_id }} ansible_user=aws_ssm" >> inventory.ini
 
       - name: Run Ansible playbook
         run: |
