@@ -187,10 +187,4 @@ jobs:
         run: |
           cd terraform
           terraform init
-          terraform destroy -auto-approve
-
-
-      - name: Export EC2 Instance ID
-        id: tf_output
-        run: |
-          echo "instance_id=$(terraform -chdir=terraform output -raw instance_id)" >> $GITHUB_OUTPUT      
+          terraform destroy -auto-approve      
