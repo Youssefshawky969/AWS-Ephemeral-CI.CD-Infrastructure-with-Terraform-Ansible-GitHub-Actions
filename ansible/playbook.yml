@@ -1,7 +1,7 @@
 - hosts: web
   gather_facts: false
   connection: aws_ssm
-  become: true
+  
   tasks:
     - name: Install nginx
       yum:
