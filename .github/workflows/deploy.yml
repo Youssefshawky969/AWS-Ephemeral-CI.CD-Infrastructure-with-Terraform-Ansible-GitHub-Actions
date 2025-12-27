@@ -133,6 +133,7 @@ jobs:
       - name: Install Ansible and AWS SDK
         run: |
           pip install ansible boto3 botocore
+          ansible-galaxy collection install amazon.aws
 
       - name: Generate dynamic inventory
         run: |
