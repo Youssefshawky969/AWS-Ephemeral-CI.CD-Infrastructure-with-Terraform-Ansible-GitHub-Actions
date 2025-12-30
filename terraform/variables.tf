@@ -25,11 +25,6 @@ variable "ami_id" {
 }  
 
 
-variable "env" {
-  description = "Deployment environment"
-  type        = string
-}
-
 
 
 
